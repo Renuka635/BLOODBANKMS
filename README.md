@@ -34,3 +34,26 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+# Blood Bank Management - Next.js
+
+
+## Setup
+1. Copy files into a new next project folder (or use npx create-next-app and replace files).
+2. Copy .env.local.example to .env.local and adjust credentials if needed.
+3. Run SQL in prisma-ignore-sql/init.sql using MySQL Workbench to create schema and seed sample data.
+4. Install dependencies:
+bash
+npm install
+
+5. Start dev server:
+bash
+npm run dev
+
+6. Open http://localhost:3000
+
+
+## Notes
+- DB connection uses mysql2 pool in lib/db.js.
+- API routes are simple REST endpoints under /api.
+- UI uses Bootstrap for a professional look and Chart.js for optional charts.
