@@ -1,206 +1,145 @@
 "use client";
-
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
+import { useRouter } from "next/navigation";
 
 export default function HospitalDashboard() {
-  const [stock, setStock] = useState([]);
-  const [billing, setBilling] = useState([]);
-  const [search, setSearch] = useState("");
-  const [form, setForm] = useState({
-    hospital_id: "",
-    blood_group: "",
-    quantity: "",
-  });
+  const router = useRouter();
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [newReq, setNewReq] = useState({ blood_group: "A+", units: 1, price_per_unit: 1500 });
+  const hospital_id = typeof window !== "undefined" ? localStorage.getItem("hospital_id") : null;
+  const hospital_name = typeof window !== "undefined" ? localStorage.getItem("hospital_name") : null;
 
   useEffect(() => {
-    fetchStock();
-    fetchBilling();
-  }, []);
+    if (!hospital_id) {
+      router.push("/hospital/login");
+      return;
+    }
+    fetchRequests();
+  }, [hospital_id]);
 
-  async function fetchStock() {
-    const res = await fetch(`/api/hospital/stock?group=${search}`);
-    setStock(await res.json());
+  async function fetchRequests() {
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/hospital/requests?hospital_id=${hospital_id}`);
+      const data = await res.json();
+      setRequests(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  async function fetchBilling() {
-    const res = await fetch("/api/hospital/billing");
-    setBilling(await res.json());
-  }
-
-  async function handleBilling(e) {
+  async function createRequest(e) {
     e.preventDefault();
+    try {
+      const res = await fetch("/api/hospital/requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hospital_id, ...newReq }),
+      });
+      if (res.ok) {
+        fetchRequests();
+      } else {
+        alert("Request failed");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
 
-    await fetch("/api/hospital/billing", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-
-    alert("Billing record created!");
-    setForm({ hospital_id: "", blood_group: "", quantity: "" });
-    fetchBilling();
+  async function markPaid(request_id) {
+    try {
+      const res = await fetch("/api/hospital/pay", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ request_id }),
+      });
+      if (res.ok) fetchRequests();
+      else alert("Unable to update payment");
+    } catch (err) { console.error(err); }
   }
 
   return (
-    <div className="container py-5">
-      <h2 className="text-center text-danger fw-bold mb-5">
-        🏥 Hospital Dashboard
-      </h2>
-
-      {/* BLOOD STOCK */}
-      <div className="card shadow mb-5">
-        <div className="card-header bg-danger text-white fw-semibold">
-          Blood Stock Availability
-        </div>
-        <div className="card-body">
-          <div className="d-flex mb-3">
-            <input
-              type="text"
-              className="form-control me-2"
-              placeholder="Search by blood group..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <button className="btn btn-outline-danger" onClick={fetchStock}>
-              Search
+    <div style={{ background: "linear-gradient(to bottom, #fff5f5, #ffffff)", minHeight: "100vh", padding: 30 }}>
+      <div className="container" style={{ maxWidth: 1000 }}>
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <h2 className="text-danger">Hospital Dashboard</h2>
+          <div>
+            <strong>{hospital_name}</strong>
+            <button className="btn btn-outline-danger ms-3" onClick={() => { localStorage.removeItem("hospital_id"); localStorage.removeItem("hospital_name"); router.push("/hospital/login"); }}>
+              Logout
             </button>
           </div>
-
-          <table className="table table-striped align-middle">
-            <thead className="table-dark">
-              <tr>
-                <th>ID</th>
-                <th>Blood Group</th>
-                <th>Quantity (Units)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stock.length > 0 ? (
-                stock.map((s) => (
-                  <tr key={s.id}>
-                    <td>{s.id}</td>
-                    <td>{s.blood_group}</td>
-                    <td>{s.quantity}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="3" className="text-center">
-                    No records found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
         </div>
-      </div>
 
-      {/* BILLING FORM */}
-      <div className="card shadow mb-5">
-        <div className="card-header bg-danger text-white fw-semibold">
-          Generate Billing
-        </div>
-        <div className="card-body">
-          <form onSubmit={handleBilling}>
-            <div className="row g-3">
-              <div className="col-md-3">
-                <input
-                  type="number"
-                  placeholder="Hospital ID"
-                  className="form-control"
-                  value={form.hospital_id}
-                  onChange={(e) =>
-                    setForm({ ...form, hospital_id: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="col-md-3">
-                <input
-                  type="text"
-                  placeholder="Blood Group"
-                  className="form-control"
-                  value={form.blood_group}
-                  onChange={(e) =>
-                    setForm({ ...form, blood_group: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="col-md-3">
-                <input
-                  type="number"
-                  placeholder="Quantity"
-                  className="form-control"
-                  value={form.quantity}
-                  onChange={(e) =>
-                    setForm({ ...form, quantity: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="col-md-3">
-                <button
-                  type="submit"
-                  className="btn btn-danger w-100 fw-semibold"
-                >
-                  Generate Bill
-                </button>
-              </div>
+        <div className="row g-4">
+          <div className="col-md-5">
+            <div className="card shadow-sm p-3">
+              <h5 className="text-danger">New Blood Request</h5>
+              <form onSubmit={createRequest}>
+                <div className="mb-2">
+                  <label className="form-label">Blood Group</label>
+                  <select className="form-select" value={newReq.blood_group} onChange={(e)=>setNewReq({...newReq,blood_group:e.target.value})}>
+                    <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+                    <option>O+</option><option>O-</option><option>AB+</option><option>AB-</option>
+                  </select>
+                </div>
+                <div className="mb-2">
+                  <label className="form-label">Units</label>
+                  <input type="number" min="1" className="form-control" value={newReq.units} onChange={(e)=>setNewReq({...newReq,units:Number(e.target.value)})}/>
+                </div>
+                <div className="mb-2">
+                  <label className="form-label">Price / Unit (₹)</label>
+                  <input type="number" className="form-control" value={newReq.price_per_unit} onChange={(e)=>setNewReq({...newReq,price_per_unit:Number(e.target.value)})}/>
+                </div>
+                <button className="btn btn-danger w-100 mt-2">Submit Request</button>
+              </form>
             </div>
-          </form>
-        </div>
-      </div>
+          </div>
 
-      {/* BILLING HISTORY */}
-      <div className="card shadow mb-5">
-        <div className="card-header bg-danger text-white fw-semibold">
-          Billing History
-        </div>
-        <div className="card-body table-responsive">
-          <table className="table table-striped align-middle">
-            <thead className="table-dark">
-              <tr>
-                <th>ID</th>
-                <th>Hospital</th>
-                <th>Blood Group</th>
-                <th>Quantity</th>
-                <th>Total Amount</th>
-                <th>Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {billing.length > 0 ? (
-                billing.map((b) => (
-                  <tr key={b.id}>
-                    <td>{b.id}</td>
-                    <td>{b.hospital_name}</td>
-                    <td>{b.blood_group}</td>
-                    <td>{b.quantity}</td>
-                    <td>₹{b.total_amount}</td>
-                    <td>{new Date(b.billing_date).toLocaleDateString()}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="6" className="text-center">
-                    No billing records yet
-                  </td>
-                </tr>
+          <div className="col-md-7">
+            <div className="card shadow-sm p-3">
+              <h5 className="text-danger">Your Requests</h5>
+              {loading ? <p>Loading...</p> : (
+                <div className="table-responsive">
+                  <table className="table align-middle">
+                    <thead className="table-danger">
+                      <tr>
+                        <th>Blood Group</th>
+                        <th>Units</th>
+                        <th>Total Cost (₹)</th>
+                        <th>Status</th>
+                        <th>Payment</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {requests.length === 0 ? (
+                        <tr><td colSpan="6" className="text-center">No requests yet</td></tr>
+                      ) : requests.map((r) => (
+                        <tr key={r.id}>
+                          <td>{r.blood_group}</td>
+                          <td>{r.units}</td>
+                          <td>{r.total_cost}</td>
+                          <td>{r.status}</td>
+                          <td>{r.payment_status}</td>
+                          <td>
+                            {r.payment_status === "unpaid" && (
+                              <button className="btn btn-sm btn-success" onClick={()=>markPaid(r.id)}>Mark Paid</button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
-            </tbody>
-          </table>
+            </div>
+          </div>
         </div>
-      </div>
-
-      <div className="text-center">
-        <button
-          className="btn btn-outline-danger fw-semibold"
-          onClick={() => (window.location.href = "/")}
-        >
-          Logout
-        </button>
       </div>
     </div>
   );

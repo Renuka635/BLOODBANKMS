@@ -12,43 +12,87 @@ export default function HospitalRegister() {
     hospital_id: "",
     address: "",
     contact_number: "",
+    blood_stock: "",
+    requested_units: "",
   });
-  const [msg, setMsg] = useState("");
+  const [message, setMessage] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const res = await fetch("/api/hospital", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    const data = await res.json();
-    if (data.success) {
-      setMsg("Hospital Registered Successfully!");
-      setTimeout(() => router.push("/hospital/dashboard"), 1000);
-    } else setMsg("Error: " + data.error);
+    try {
+      const res = await fetch("/api/hospital/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      if (res.ok) {
+        setMessage("✅ Registration successful! Redirecting to login...");
+        setTimeout(() => router.push("/hospital/login"), 2000);
+      } else {
+        const data = await res.json();
+        setMessage(data.error || "❌ Registration failed.");
+      }
+    } catch {
+      setMessage("⚠ Network error occurred.");
+    }
   };
 
   return (
-    <div className="container mt-5">
-      <h3 className="text-danger text-center fw-bold mb-3">Hospital Registration</h3>
-      <form className="shadow p-4 bg-light rounded" onSubmit={handleSubmit}>
-        {Object.keys(form).map((key) => (
-          <input
-            key={key}
-            type="text"
-            className="form-control mb-3"
-            placeholder={key.replace("_", " ").toUpperCase()}
-            value={form[key]}
-            onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-            required
-          />
-        ))}
-        <button className="btn btn-danger w-100 fw-semibold" type="submit">
-          Register
-        </button>
-        {msg && <div className="alert alert-success mt-3">{msg}</div>}
-      </form>
+    <div
+      className="d-flex flex-column justify-content-center align-items-center min-vh-100"
+      style={{ background: "linear-gradient(to bottom, #ffe6e6, #ffffff)" }}
+    >
+      <div className="card shadow-lg p-4 border-0" style={{ width: "28rem" }}>
+        <h2 className="text-center text-danger fw-bold mb-3">
+          🏥 Hospital Registration
+        </h2>
+        <form onSubmit={handleSubmit}>
+          {[
+            ["hospital_name", "Hospital Name"],
+            ["email", "Email"],
+            ["hospital_id", "Hospital ID"],
+            ["address", "Address"],
+            ["contact_number", "Contact Number"],
+          ].map(([key, label]) => (
+            <div className="mb-3" key={key}>
+              <label className="form-label">{label}</label>
+              <input
+                type="text"
+                className="form-control"
+                required
+                value={form[key]}
+                onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+              />
+            </div>
+          ))}
+
+          <div className="mb-3">
+            <label className="form-label">Available Blood Stock</label>
+            <textarea
+              className="form-control"
+              rows="2"
+              placeholder="E.g. A+ : 10 units, O- : 5 units"
+              value={form.blood_stock}
+              onChange={(e) => setForm({ ...form, blood_stock: e.target.value })}
+            />
+          </div>
+
+          <div className="mb-3">
+            <label className="form-label">Blood Units Required</label>
+            <textarea
+              className="form-control"
+              rows="2"
+              placeholder="E.g. B+ : 3 units"
+              value={form.requested_units}
+              onChange={(e) => setForm({ ...form, requested_units: e.target.value })}
+            />
+          </div>
+
+          <button className="btn btn-danger w-100 fw-semibold">Register</button>
+        </form>
+        {message && <p className="text-center mt-3 fw-semibold">{message}</p>}
+      </div>
     </div>
   );
 }
