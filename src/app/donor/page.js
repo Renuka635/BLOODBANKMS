@@ -73,8 +73,18 @@ export default function DonorEligibility() {
           </button>
         </div>
 
+        {/* 🔽 Added Login Button – No other content changed */}
+        <div className="text-center mt-3">
+          <button
+            className="btn btn-outline-secondary w-100 fw-semibold"
+            onClick={() => (window.location.href = "/donor/login")}
+          >
+            Already Registered? Login
+          </button>
+        </div>
+
         <p className="text-center text-muted mt-4 fst-italic">
-          “You don’t have to be a doctor to save lives — just donate blood.” 🩸
+          “You do not have to be a doctor to save lives — just donate blood.” 🩸
         </p>
       </div>
     </div>

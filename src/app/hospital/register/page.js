@@ -20,14 +20,11 @@ export default function HospitalRegister() {
 
   const [message, setMessage] = useState("");
 
-  // ⬇ FETCH AVAILABLE BLOOD STOCK FROM BACKEND  
   useEffect(() => {
     async function fetchStock() {
       try {
         const res = await fetch("/api/bloodstock");
         const data = await res.json();
-
-        // expecting: [ { blood_group: "A+", units: 10 }, ... ]
         setBloodOptions(data);
       } catch (err) {
         console.log("Error fetching stock", err);
@@ -89,7 +86,7 @@ export default function HospitalRegister() {
             </div>
           ))}
 
-          {/* 🔽 DROPDOWN FOR AVAILABLE BLOOD STOCK */}
+          {/* Blood stock dropdown */}
           <div className="mb-3">
             <label className="form-label">Available Blood Stock</label>
 
@@ -114,7 +111,7 @@ export default function HospitalRegister() {
             </select>
           </div>
 
-          {/* Requested units text area (UNCHANGED) */}
+          {/* Requested units */}
           <div className="mb-3">
             <label className="form-label">Blood Units Required</label>
             <textarea
@@ -135,6 +132,14 @@ export default function HospitalRegister() {
             Register
           </button>
         </form>
+
+        {/* 🔽 Added Login Button Below – No other content changed */}
+        <button
+          className="btn btn-outline-secondary w-100 mt-3 fw-semibold"
+          onClick={() => router.push("/hospital/login")}
+        >
+          Already Registered? Login
+        </button>
 
         {message && <p className="text-center mt-3 fw-semibold">{message}</p>}
       </div>

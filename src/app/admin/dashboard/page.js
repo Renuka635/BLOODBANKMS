@@ -485,56 +485,94 @@ export default function AdminDashboard() {
           )}
 
           {/* Billing */}
-          {activeSection === "billing" && (
-            <section>
-              <div className="card shadow-sm mb-4">
-                <div className="card-header bg-danger text-white fw-bold">💳 Hospital Billing</div>
-                <div className="card-body">
-                  <form onSubmit={handleBillingSubmit} className="row g-3 mb-4">
-                    <div className="col-md-4">
-                      <input className="form-control" placeholder="Hospital ID"
-                        value={billingForm.hospital_id || ""}
-                        onChange={(e) => setBillingForm({ ...billingForm, hospital_id: e.target.value })} required />
-                    </div>
-                    <div className="col-md-4">
-                      <input className="form-control" placeholder="Hospital Name"
-                        value={billingForm.hospital_name || ""}
-                        onChange={(e) => setBillingForm({ ...billingForm, hospital_name: e.target.value })} required />
-                    </div>
-                    <div className="col-md-2">
-                      <input type="date" className="form-control"
-                      value={billingForm.date_of_supply || ""}
-                        onChange={(e) => setBillingForm({ ...billingForm, date_of_supply: e.target.value })} required />
-                    </div>
-                    <div className="col-md-2 d-grid">
-                      <button className="btn btn-danger">Add Billing</button>
-                    </div>
-                  </form>
+{activeSection === "billing" && (
+  <section>
+    <div className="card shadow-sm mb-4">
+      <div className="card-header bg-danger text-white fw-bold">💳 Hospital Billing</div>
+      <div className="card-body">
 
-                  <div className="table-responsive">
-                    <table className="table table-striped align-middle">
-                      <thead className="table-dark">
-                        <tr>
-                          <th>ID</th>
-                          <th>Hospital</th>
-                          
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {hospitalList.length > 0 ? hospitalList.map(h => (
-                          <tr key={h.id}>
-                            <td>{h.id}</td>
-                            <td>{h.hospital_name || "-"}</td>
-                           
-                          </tr>
-                        )) : <tr><td colSpan="5" className="text-center">No billing records</td></tr>}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            </section>
-          )}
+        {/* Billing Form */}
+        <form onSubmit={handleBillingSubmit} className="row g-3 mb-4">
+
+          <div className="col-md-4">
+            <input
+              className="form-control"
+              placeholder="Hospital ID"
+              value={billingForm.hospital_id}
+              onChange={(e) =>
+                setBillingForm({ ...billingForm, hospital_id: e.target.value })
+              }
+              required
+            />
+          </div>
+
+          <div className="col-md-4">
+            <input
+              className="form-control"
+              placeholder="Hospital Name"
+              value={billingForm.hospital_name}
+              onChange={(e) =>
+                setBillingForm({ ...billingForm, hospital_name: e.target.value })
+              }
+              required
+            />
+          </div>
+
+          {/* 🔽 STATUS: SUCCESS / PENDING */}
+          <div className="col-md-4">
+            <select
+              className="form-select"
+              value={billingForm.status || ""}
+              onChange={(e) =>
+                setBillingForm({ ...billingForm, status: e.target.value })
+              }
+              required
+            >
+              <option value="">Select Status</option>
+              <option value="Success">Success ✔</option>
+              <option value="Pending">Pending ⏳</option>
+            </select>
+          </div>
+
+          <div className="col-md-12 d-grid">
+            <button className="btn btn-danger">Update Status</button>
+          </div>
+        </form>
+
+        {/* Billing Table */}
+        <div className="table-responsive">
+          <table className="table table-striped align-middle">
+            <thead className="table-dark">
+              <tr>
+                <th>ID</th>
+                <th>Hospital</th>
+               
+              </tr>
+            </thead>
+            <tbody>
+              {hospitalList.length > 0 ? (
+                hospitalList.map((h) => (
+                  <tr key={h.id}>
+                    <td>{h.id}</td>
+                    <td>{h.hospital_name || "-"}</td>
+                    
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="3" className="text-center">
+                    No billing records
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+)}
+            
 
           {/* Stock Section */}
           {activeSection === "stock" && (

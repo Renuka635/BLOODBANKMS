@@ -80,14 +80,23 @@ export default function HospitalLogin() {
               <strong>Requested Blood:</strong> {hospitalData.requested_blood || "A+"}
             </li>
             <li className="list-group-item">
-              <strong>Payment Status:</strong> {hospitalData.payment_status || "Pending"}
-            </li>
-            <li className="list-group-item">
               <strong>Address:</strong> {hospitalData.address}
             </li>
             <li className="list-group-item">
               <strong>Contact:</strong> {hospitalData.contact_number}
             </li>
+            <p>
+  Billing Status:{" "}
+  <span
+    className={
+      hospital.billing_status === "success"
+        ? "text-success fw-bold"
+        : "text-warning fw-bold"
+    }
+  >
+    {hospital.billing_status}
+  </span>
+</p>
           </ul>
         </div>
       )}
