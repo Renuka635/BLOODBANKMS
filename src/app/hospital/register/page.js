@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import "bootstrap/dist/css/bootstrap.min.css";
 
 export default function HospitalRegister() {
   const router = useRouter();
+
+  const [bloodOptions, setBloodOptions] = useState([]);
   const [form, setForm] = useState({
     hospital_name: "",
     email: "",
@@ -15,7 +17,24 @@ export default function HospitalRegister() {
     blood_stock: "",
     requested_units: "",
   });
+
   const [message, setMessage] = useState("");
+
+  // ⬇ FETCH AVAILABLE BLOOD STOCK FROM BACKEND  
+  useEffect(() => {
+    async function fetchStock() {
+      try {
+        const res = await fetch("/api/bloodstock");
+        const data = await res.json();
+
+        // expecting: [ { blood_group: "A+", units: 10 }, ... ]
+        setBloodOptions(data);
+      } catch (err) {
+        console.log("Error fetching stock", err);
+      }
+    }
+    fetchStock();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -47,6 +66,7 @@ export default function HospitalRegister() {
         <h2 className="text-center text-danger fw-bold mb-3">
           🏥 Hospital Registration
         </h2>
+
         <form onSubmit={handleSubmit}>
           {[
             ["hospital_name", "Hospital Name"],
@@ -62,22 +82,39 @@ export default function HospitalRegister() {
                 className="form-control"
                 required
                 value={form[key]}
-                onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, [key]: e.target.value })
+                }
               />
             </div>
           ))}
 
+          {/* 🔽 DROPDOWN FOR AVAILABLE BLOOD STOCK */}
           <div className="mb-3">
             <label className="form-label">Available Blood Stock</label>
-            <textarea
-              className="form-control"
-              rows="2"
-              placeholder="E.g. A+ : 10 units, O- : 5 units"
+
+            <select
+              className="form-select"
+              required
               value={form.blood_stock}
-              onChange={(e) => setForm({ ...form, blood_stock: e.target.value })}
-            />
+              onChange={(e) =>
+                setForm({ ...form, blood_stock: e.target.value })
+              }
+            >
+              <option value="">Select Available Stock</option>
+
+              {bloodOptions.map((item, i) => (
+                <option
+                  key={i}
+                  value={`${item.blood_group} : ${item.quantity} quantity`}
+                >
+                  {item.blood_group} — {item.quantity} quantity
+                </option>
+              ))}
+            </select>
           </div>
 
+          {/* Requested units text area (UNCHANGED) */}
           <div className="mb-3">
             <label className="form-label">Blood Units Required</label>
             <textarea
@@ -85,12 +122,20 @@ export default function HospitalRegister() {
               rows="2"
               placeholder="E.g. B+ : 3 units"
               value={form.requested_units}
-              onChange={(e) => setForm({ ...form, requested_units: e.target.value })}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  requested_units: e.target.value,
+                })
+              }
             />
           </div>
 
-          <button className="btn btn-danger w-100 fw-semibold">Register</button>
+          <button className="btn btn-danger w-100 fw-semibold">
+            Register
+          </button>
         </form>
+
         {message && <p className="text-center mt-3 fw-semibold">{message}</p>}
       </div>
     </div>

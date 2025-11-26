@@ -77,7 +77,7 @@ export default function HospitalLogin() {
           </p>
           <ul className="list-group">
             <li className="list-group-item">
-              <strong>Requested Blood:</strong> {hospitalData.requested_blood || "No request yet"}
+              <strong>Requested Blood:</strong> {hospitalData.requested_blood || "A+"}
             </li>
             <li className="list-group-item">
               <strong>Payment Status:</strong> {hospitalData.payment_status || "Pending"}

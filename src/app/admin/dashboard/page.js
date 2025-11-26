@@ -4,16 +4,12 @@ import { useEffect, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 
 /**
- * Admin Dashboard
- * - Left vertical sidebar
- * - Sections: Add Camp, Camp List, Staff List, Registered Donors, Hospital List, Billing, Blood Stock
- * - Uses Bootstrap only and simple alerts for success
- *
- * Note: Adjust API endpoints if yours differ.
+ * Admin Dashboard (merged Add Camp into Camp List)
+ * Minimal changes — only fixes requested fields and stock update behaviour.
  */
 
 export default function AdminDashboard() {
-  const [activeSection, setActiveSection] = useState("camp");
+  const [activeSection, setActiveSection] = useState("campList"); // default to merged section
   const [loading, setLoading] = useState(false);
 
   // Forms / state
@@ -73,7 +69,6 @@ export default function AdminDashboard() {
     try {
       const res = await fetch(url, opts);
       if (!res.ok) {
-        // optional: read text for debugging
         const txt = await res.text().catch(() => "");
         console.error("Fetch error", url, res.status, txt);
         return null;
@@ -109,12 +104,11 @@ export default function AdminDashboard() {
 
   // Handlers
   async function handleAddCamp(e) {
-    e?.preventDefault?.();
+    e.preventDefault();
     const payload = {
       camp_name: campForm.camp_name,
       location: campForm.location,
       date: campForm.date,
-      // staff as nested object for convenience
       staff: {
         name: campForm.staff_name,
         qualification: campForm.qualification,
@@ -139,12 +133,14 @@ export default function AdminDashboard() {
         staff_email: "",
       });
       await fetchCamps();
-      await fetchStaff(); // in case backend created staff
-    } else alert("Failed to add camp");
+      await fetchStaff();
+    } else {
+      alert("Failed to add camp");
+    }
   }
 
   async function handleAddStaff(e) {
-    e?.preventDefault?.();
+    e.preventDefault();
     const payload = { ...staffForm };
     const res = await safeFetch("/api/admin/staff", {
       method: "POST",
@@ -155,26 +151,49 @@ export default function AdminDashboard() {
       alert("Staff added");
       setStaffForm({ name: "", qualification: "", phone: "", email: "" });
       await fetchStaff();
-    } else alert("Failed to add staff");
+    } else {
+      alert("Failed to add staff");
+    }
   }
 
   async function handleStockUpdate(e) {
-    e?.preventDefault?.();
-    const payload = { ...stockForm };
+    e.preventDefault();
+    const payload = {
+      blood_group: stockForm.blood_group,
+      units: Number(stockForm.units) || 0,
+    };
+
+    // call backend to update (expecting PUT /api/admin/stock handling)
     const res = await safeFetch("/api/admin/stock", {
-      method: "PUT", // prefer PUT for update
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
+
     if (res) {
+      // Update frontend state immediately:
+      setStockList((prev) => {
+        const idx = prev.findIndex((p) => (p.blood_group || "").toString() === (payload.blood_group || "").toString());
+        if (idx >= 0) {
+          // replace item
+          const copy = [...prev];
+          copy[idx] = { ...copy[idx], units: payload.units };
+          return copy;
+        } else {
+          // add new entry
+          return [...prev, { blood_group: payload.blood_group, units: payload.units }];
+        }
+      });
+
       alert("Stock updated");
       setStockForm({ blood_group: "", units: "" });
-      await fetchStock();
-    } else alert("Failed to update stock");
+    } else {
+      alert("Failed to update stock");
+    }
   }
 
   async function handleBillingSubmit(e) {
-    e?.preventDefault?.();
+    e.preventDefault();
     const payload = { ...billingForm };
     const res = await safeFetch("/api/admin/billing", {
       method: "POST",
@@ -191,10 +210,11 @@ export default function AdminDashboard() {
         paid_amount: "",
       });
       await fetchHospitals();
-    } else alert("Failed to add billing");
+    } else {
+      alert("Failed to add billing");
+    }
   }
 
-  // utility to compute low stock (for visual)
   const computeStockStatus = (units) => {
     const u = Number(units) || 0;
     if (u <= 3) return "Low";
@@ -214,7 +234,7 @@ export default function AdminDashboard() {
           </div>
 
           {[
-            { key: "camp", label: "Add Camp" },
+            /* merged: only Camp List now */
             { key: "campList", label: "Camp List" },
             { key: "staff", label: "Staff List" },
             { key: "donors", label: "Registered Donors" },
@@ -240,44 +260,51 @@ export default function AdminDashboard() {
 
         {/* Main */}
         <main className="flex-grow-1 p-4">
-          {/* Loading */}
           {loading && <div className="mb-3 alert alert-info">Refreshing data...</div>}
 
-          {/* Add Camp */}
-          {activeSection === "camp" && (
+          {/* Camp List (merged: add form on top + list below) */}
+          {activeSection === "campList" && (
             <section>
               <div className="card shadow-sm mb-4">
-                <div className="card-header bg-danger text-white fw-bold">➕ Add Camp</div>
+                <div className="card-header bg-danger text-white fw-bold">📋 Camp List</div>
                 <div className="card-body">
-                  <form onSubmit={handleAddCamp} className="row g-3">
+                  {/* Add Camp Form (merged) */}
+                  <form onSubmit={handleAddCamp} className="row g-3 mb-4">
                     <div className="col-md-4">
-                      <input className="form-control" placeholder="Camp Name" value={campForm.camp_name}
+                      <input className="form-control" placeholder="Camp Name"
+                        value={campForm.camp_name || ""}
                         onChange={(e) => setCampForm({ ...campForm, camp_name: e.target.value })} required />
                     </div>
                     <div className="col-md-4">
-                      <input className="form-control" placeholder="Location" value={campForm.location}
+                      <input className="form-control" placeholder="Location"
+                        value={campForm.location || ""}
                         onChange={(e) => setCampForm({ ...campForm, location: e.target.value })} required />
                     </div>
                     <div className="col-md-4">
-                      <input type="date" className="form-control" value={campForm.date}
+                      <input type="date" className="form-control"
+                        value={campForm.date || ""}
                         onChange={(e) => setCampForm({ ...campForm, date: e.target.value })} required />
                     </div>
 
                     {/* Staff quick add inside Add Camp */}
                     <div className="col-md-4">
-                      <input className="form-control" placeholder="Staff Name" value={campForm.staff_name}
+                      <input className="form-control" placeholder="Staff Name"
+                        value={campForm.staff_name || ""}
                         onChange={(e) => setCampForm({ ...campForm, staff_name: e.target.value })} />
                     </div>
                     <div className="col-md-3">
-                      <input className="form-control" placeholder="Qualification" value={campForm.qualification}
+                      <input className="form-control" placeholder="Qualification"
+                        value={campForm.qualification || ""}
                         onChange={(e) => setCampForm({ ...campForm, qualification: e.target.value })} />
                     </div>
                     <div className="col-md-2">
-                      <input className="form-control" placeholder="Phone" value={campForm.staff_phone}
+                      <input className="form-control" placeholder="Phone"
+                        value={campForm.staff_phone || ""}
                         onChange={(e) => setCampForm({ ...campForm, staff_phone: e.target.value })} />
                     </div>
                     <div className="col-md-3">
-                      <input className="form-control" placeholder="Email" value={campForm.staff_email}
+                      <input className="form-control" placeholder="Email"
+                        value={campForm.staff_email || ""}
                         onChange={(e) => setCampForm({ ...campForm, staff_email: e.target.value })} />
                     </div>
 
@@ -287,72 +314,97 @@ export default function AdminDashboard() {
                   </form>
 
                   {/* Staff visibility: show staff list for easy assignment */}
-                  <div className="mt-4">
+                  <div className="mt-2 mb-3">
                     <h6>Existing Staff (click to copy name to staff field)</h6>
                     <div className="d-flex flex-wrap gap-2">
                       {staffList.length > 0 ? staffList.map((s) => (
                         <button key={s.id}
                           className="btn btn-outline-secondary btn-sm"
-                          onClick={() => setCampForm(form => ({ ...form, staff_name: s.name, qualification: s.qualification, staff_phone: s.phone, staff_email: s.email }))}>
-                          {s.name}
+                          onClick={() => setCampForm(form => ({ ...form, staff_name: s.name || s.staff_name || "", qualification: s.qualification || s.qual || "", staff_phone: s.phone || s.contact || "", staff_email: s.email || s.staff_email || "" }))}>
+                          {s.name || s.staff_name || "Unnamed"}
                         </button>
                       )) : <div className="text-muted">No staff yet</div>}
                     </div>
                   </div>
-                </div>
-              </div>
-            </section>
-          )}
 
-          {/* Camp List */}
-          {activeSection === "campList" && (
-            <section>
-              <div className="card shadow-sm mb-4">
-                <div className="card-header bg-danger text-white fw-bold">📋 Camp List</div>
-                <div className="card-body table-responsive">
-                  <table className="table table-striped align-middle">
-                    <thead className="table-dark">
-                      <tr><th>ID</th><th>Camp Name</th><th>Location</th><th>Date</th><th>Assigned Staff</th></tr>
-                    </thead>
-                    <tbody>
-                      {campList.length > 0 ? campList.map(c => (
-                        <tr key={c.id}>
-                          <td>{c.id}</td>
-                          <td>{c.camp_name}</td>
-                          <td>{c.location}</td>
-                          <td>{c.date ? new Date(c.date).toLocaleDateString() : "-"}</td>
-                          <td>{c.staff?.name || "-"}</td>
+                  {/* Camp table */}
+                  <div className="table-responsive">
+                    <table className="table table-striped align-middle">
+                      <thead className="table-dark">
+                        <tr>
+                          <th>ID</th>
+                          <th>Camp Name</th>
+                          <th>Location</th>
+                          <th>Date</th>
+                         
                         </tr>
-                      )) : <tr><td colSpan="5" className="text-center">No camps</td></tr>}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {campList.length > 0 ? campList.map(c => (
+                          <tr key={c.id}>
+                            <td>{c.id}</td>
+                            <td>{c.camp_name || c.name || "-"}</td>
+                            <td>{c.location || "-"}</td>
+                            <td>{c.date ? new Date(c.date).toLocaleDateString() : (c.camp_date ? new Date(c.camp_date).toLocaleDateString() : "-")}</td>
+                            
+                          </tr>
+                        )) : <tr><td colSpan="5" className="text-center">No camps</td></tr>}
+                      </tbody>
+                    </table>
+                  </div>
+
                 </div>
               </div>
             </section>
           )}
 
-          {/* Staff List & manual add */}
+          {/* Staff */}
           {activeSection === "staff" && (
             <section>
               <div className="card shadow-sm mb-4">
                 <div className="card-header bg-danger text-white fw-bold">👥 Staff List</div>
                 <div className="card-body">
                   <form onSubmit={handleAddStaff} className="row g-3 mb-4">
-                    <div className="col-md-3"><input className="form-control" placeholder="Name" value={staffForm.name}
-                      onChange={(e) => setStaffForm({ ...staffForm, name: e.target.value })} required /></div>
-                    <div className="col-md-3"><input className="form-control" placeholder="Qualification" value={staffForm.qualification}
-                      onChange={(e) => setStaffForm({ ...staffForm, qualification: e.target.value })} required /></div>
-                    <div className="col-md-3"><input className="form-control" placeholder="Phone" value={staffForm.phone}
-                      onChange={(e) => setStaffForm({ ...staffForm, phone: e.target.value })} required /></div>
-                    <div className="col-md-3 d-grid"><button className="btn btn-danger">Add Staff</button></div>
+                    <div className="col-md-3">
+                      <input className="form-control" placeholder="Name"
+                        value={staffForm.name || ""}
+                        onChange={(e) => setStaffForm({ ...staffForm, name: e.target.value })} required />
+                    </div>
+                    <div className="col-md-3">
+                      <input className="form-control" placeholder="Qualification"
+                        value={staffForm.qualification || ""}
+                        onChange={(e) => setStaffForm({ ...staffForm, qualification: e.target.value })} required />
+                    </div>
+                    <div className="col-md-3">
+                      <input className="form-control" placeholder="Phone"
+                        value={staffForm.phone || ""}
+                        onChange={(e) => setStaffForm({ ...staffForm, phone: e.target.value })} required />
+                    </div>
+                    <div className="col-md-3 d-grid">
+                      <button className="btn btn-danger">Add Staff</button>
+                    </div>
                   </form>
 
                   <div className="table-responsive">
                     <table className="table table-striped align-middle">
-                      <thead className="table-dark"><tr><th>ID</th><th>Name</th><th>Qualification</th><th>Phone</th><th>Email</th></tr></thead>
+                      <thead className="table-dark">
+                        <tr>
+                          <th>ID</th>
+                          <th>Name</th>
+                         
+                          <th>Phone</th>
+                          
+                        </tr>
+                      </thead>
                       <tbody>
                         {staffList.length > 0 ? staffList.map(s => (
-                          <tr key={s.id}><td>{s.id}</td><td>{s.name}</td><td>{s.qualification}</td><td>{s.phone}</td><td>{s.email}</td></tr>
+                          <tr key={s.id}>
+                            <td>{s.id}</td>
+                            <td>{s.name || s.staff_name || "-"}</td>
+                            
+                            <td>{s.phone || s.contact || "-"}</td>
+                          
+                          </tr>
                         )) : <tr><td colSpan="5" className="text-center">No staff found</td></tr>}
                       </tbody>
                     </table>
@@ -369,10 +421,26 @@ export default function AdminDashboard() {
                 <div className="card-header bg-danger text-white fw-bold">🩸 Registered Donors</div>
                 <div className="card-body table-responsive">
                   <table className="table table-striped align-middle">
-                    <thead className="table-dark"><tr><th>ID</th><th>Name</th><th>Blood Group</th><th>Camp</th><th>Contact</th><th>Date</th></tr></thead>
+                    <thead className="table-dark">
+                      <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Blood Group</th>
+                       
+                        <th>Contact</th>
+                        
+                      </tr>
+                    </thead>
                     <tbody>
                       {donorList.length > 0 ? donorList.map(d => (
-                        <tr key={d.id}><td>{d.id}</td><td>{d.name}</td><td>{d.blood_group}</td><td>{d.camp_name || "-"}</td><td>{d.contact || "-"}</td><td>{d.registered_date ? new Date(d.registered_date).toLocaleDateString() : "-"}</td></tr>
+                        <tr key={d.id}>
+                          <td>{d.id}</td>
+                          <td>{d.name || d.full_name || "-"}</td>
+                          <td>{d.blood_group || d.bgrp || "-"}</td>
+                         
+                          <td>{d.contact || d.phone || d.contact_no || "-"}</td>
+                          
+                        </tr>
                       )) : <tr><td colSpan="6" className="text-center">No donors</td></tr>}
                     </tbody>
                   </table>
@@ -388,10 +456,26 @@ export default function AdminDashboard() {
                 <div className="card-header bg-danger text-white fw-bold">🏥 Hospital List</div>
                 <div className="card-body table-responsive">
                   <table className="table table-striped align-middle">
-                    <thead className="table-dark"><tr><th>ID</th><th>Name</th><th>Address</th><th>Phone</th><th>Requested Group</th><th>Units</th></tr></thead>
+                    <thead className="table-dark">
+                      <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Address</th>
+                        <th>Phone</th>
+                        <th>Requested Group</th>
+                        <th>Units</th>
+                      </tr>
+                    </thead>
                     <tbody>
                       {hospitalList.length > 0 ? hospitalList.map(h => (
-                        <tr key={h.id}><td>{h.id}</td><td>{h.hospital_name}</td><td>{h.address || "-"}</td><td>{h.contact_number || "-"}</td><td>{h.requested_group || "-"}</td><td>{h.requested_units || "-"}</td></tr>
+                        <tr key={h.id}>
+                          <td>{h.id}</td>
+                          <td>{h.hospital_name || h.name || "-"}</td>
+                          <td>{h.address || h.hospital_address || "-"}</td>
+                          <td>{h.contact_number || h.phone || "-"}</td>
+                          <td>{h.blood_stock || h.request_group || h.requested_blood || "-"}</td>
+                          <td>{h.requested_units ?? h.units ?? "-"}</td>
+                        </tr>
                       )) : <tr><td colSpan="6" className="text-center">No hospitals</td></tr>}
                     </tbody>
                   </table>
@@ -407,19 +491,42 @@ export default function AdminDashboard() {
                 <div className="card-header bg-danger text-white fw-bold">💳 Hospital Billing</div>
                 <div className="card-body">
                   <form onSubmit={handleBillingSubmit} className="row g-3 mb-4">
-                    <div className="col-md-4"><input className="form-control" placeholder="Hospital ID" value={billingForm.hospital_id} onChange={(e)=>setBillingForm({...billingForm, hospital_id:e.target.value})} required/></div>
-                    <div className="col-md-4"><input className="form-control" placeholder="Hospital Name" value={billingForm.hospital_name} onChange={(e)=>setBillingForm({...billingForm, hospital_name:e.target.value})} required/></div>
-                    <div className="col-md-2"><input type="date" className="form-control" value={billingForm.date_of_supply} onChange={(e)=>setBillingForm({...billingForm, date_of_supply:e.target.value})} required/></div>
-                    <div className="col-md-2 d-grid"><button className="btn btn-danger">Add Billing</button></div>
+                    <div className="col-md-4">
+                      <input className="form-control" placeholder="Hospital ID"
+                        value={billingForm.hospital_id || ""}
+                        onChange={(e) => setBillingForm({ ...billingForm, hospital_id: e.target.value })} required />
+                    </div>
+                    <div className="col-md-4">
+                      <input className="form-control" placeholder="Hospital Name"
+                        value={billingForm.hospital_name || ""}
+                        onChange={(e) => setBillingForm({ ...billingForm, hospital_name: e.target.value })} required />
+                    </div>
+                    <div className="col-md-2">
+                      <input type="date" className="form-control"
+                      value={billingForm.date_of_supply || ""}
+                        onChange={(e) => setBillingForm({ ...billingForm, date_of_supply: e.target.value })} required />
+                    </div>
+                    <div className="col-md-2 d-grid">
+                      <button className="btn btn-danger">Add Billing</button>
+                    </div>
                   </form>
 
-                  {/* Simple billing table (if hospitals endpoint includes billing info) */}
                   <div className="table-responsive">
                     <table className="table table-striped align-middle">
-                      <thead className="table-dark"><tr><th>ID</th><th>Hospital</th><th>Date</th><th>Pending</th><th>Paid</th></tr></thead>
+                      <thead className="table-dark">
+                        <tr>
+                          <th>ID</th>
+                          <th>Hospital</th>
+                          
+                        </tr>
+                      </thead>
                       <tbody>
                         {hospitalList.length > 0 ? hospitalList.map(h => (
-                          <tr key={h.id}><td>{h.id}</td><td>{h.hospital_name}</td><td>{h.last_supply_date || "-"}</td><td>{h.pending_amount || "-"}</td><td>{h.paid_amount || "-"}</td></tr>
+                          <tr key={h.id}>
+                            <td>{h.id}</td>
+                            <td>{h.hospital_name || "-"}</td>
+                           
+                          </tr>
                         )) : <tr><td colSpan="5" className="text-center">No billing records</td></tr>}
                       </tbody>
                     </table>
@@ -429,62 +536,80 @@ export default function AdminDashboard() {
             </section>
           )}
 
-          {/* Stock */}
+          {/* Stock Section */}
           {activeSection === "stock" && (
             <section>
               <div className="card shadow-sm mb-4">
                 <div className="card-header bg-danger text-white fw-bold">📊 Blood Stock</div>
                 <div className="card-body">
+
+                  {/* Update Stock Form */}
                   <form onSubmit={handleStockUpdate} className="row g-3 mb-4">
                     <div className="col-md-4">
-                      <select className="form-select" value={stockForm.blood_group} onChange={(e)=>setStockForm({...stockForm,blood_group:e.target.value})} required>
+                      <select
+                        className="form-select"
+                        value={stockForm.blood_group || ""}
+                        onChange={(e) => setStockForm({ ...stockForm, blood_group: e.target.value })}
+                        required
+                      >
                         <option value="">Select Blood Group</option>
-                        {["A+","A-","B+","B-","O+","O-","AB+","AB-"].map(bg=>(<option key={bg} value={bg}>{bg}</option>))}
+                        {["A+","A-","B+","B-","O+","O-","AB+","AB-"].map(bg => (
+                          <option key={bg} value={bg}>{bg}</option>
+                        ))}
                       </select>
                     </div>
-                    <div className="col-md-4"><input type="number" className="form-control" placeholder="Units" value={stockForm.units} onChange={(e)=>setStockForm({...stockForm,units:e.target.value})} required/></div>
-                    <div className="col-md-4 d-grid"><button className="btn btn-danger">Update Stock</button></div>
+
+                    <div className="col-md-4">
+                      <input
+                        type="number"
+                        className="form-control"
+                        placeholder="Units"
+                        value={stockForm.units ?? ""}
+                        onChange={(e) => setStockForm({ ...stockForm, units: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="col-md-4 d-grid">
+                      <button className="btn btn-danger">Update Stock</button>
+                    </div>
                   </form>
 
-                  {/* Stock table */}
-                  <div className="table-responsive mb-4">
+                  {/* Stock Table */}
+                  <div className="table-responsive">
                     <table className="table table-striped align-middle">
-                      <thead className="table-dark"><tr><th>Group</th><th>Units</th><th>Status</th></tr></thead>
+                      <thead className="table-dark">
+                        <tr>
+                          <th>Blood Group</th>
+                          <th>Units</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
                       <tbody>
                         {stockList.length > 0 ? stockList.map(s => (
-                          <tr key={s.id || s.blood_group}>
-                            <td>{s.blood_group}</td>
-                            <td>{s.quantity ?? s.units ?? 0}</td>
-                            <td>{computeStockStatus(s.quantity ?? s.units ?? 0)}</td>
+                          <tr key={s.blood_group || s.id || Math.random()}>
+                            <td>{s.blood_group || s.group || "-"}</td>
+                            <td>{(s.units ?? s.quantity ?? 0).toString()}</td>
+                            <td>
+                              <span className={
+                                computeStockStatus(s.units ?? s.quantity ?? 0) === "Low" ? "text-danger fw-bold" :
+                                computeStockStatus(s.units ?? s.quantity ?? 0) === "Medium" ? "text-warning fw-bold" :
+                                "text-success fw-bold"
+                              }>
+                                {computeStockStatus(s.units ?? s.quantity ?? 0)}
+                              </span>
+                            </td>
                           </tr>
                         )) : <tr><td colSpan="3" className="text-center">No stock data</td></tr>}
                       </tbody>
                     </table>
                   </div>
 
-                  {/* Simple "graph" using progress bars */}
-                  <div className="row">
-                    {stockList.length > 0 ? stockList.map(s => {
-                      const units = Number(s.quantity ?? s.units ?? 0);
-                      // scale to 100 (assume 20 units is 100% for visual)
-                      const pct = Math.min(100, Math.round((units / 20) * 100));
-                      return (
-                        <div className="col-md-6 mb-3" key={s.blood_group}>
-                          <div className="d-flex justify-content-between mb-1">
-                            <div><strong>{s.blood_group}</strong></div>
-                            <div className="small text-muted">{units} units</div>
-                          </div>
-                          <div className="progress" style={{height: 18}}>
-                            <div className={`progress-bar ${units <=3 ? "bg-danger" : units <=8 ? "bg-warning" : "bg-success"}`} role="progressbar" style={{width: `${pct}%`}} aria-valuenow={pct} aria-valuemin="0" aria-valuemax="100">{pct}%</div>
-                          </div>
-                        </div>
-                      );
-                    }) : <div className="col-12 text-center text-muted">No graph data</div>}
-                  </div>
                 </div>
               </div>
             </section>
           )}
+
         </main>
       </div>
     </div>
